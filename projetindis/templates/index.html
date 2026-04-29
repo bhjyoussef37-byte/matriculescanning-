@@ -1,0 +1,395 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <title>ALPR Neural · Dashboard</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --accent: #00f5c8;
+            --accent2: #7b5cff;
+            --bg0: #07080f;
+            --bg1: #0e0f1a;
+            --bg2: #151627;
+            --bg3: #1c1e35;
+            --border: rgba(255,255,255,0.07);
+            --text1: #f0f0ff;
+            --text2: #8888aa;
+            --text3: #4a4a6a;
+            --danger: #ff4d6d;
+            --warn: #ffb347;
+        }
+
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body {
+            font-family: 'Space Grotesk', sans-serif;
+            background: var(--bg0);
+            color: var(--text1);
+            min-height: 100vh;
+            overflow-x: hidden;
+        }
+        .mono { font-family: 'JetBrains Mono', monospace; }
+
+        /* TOPBAR */
+        .topbar {
+            display: flex; align-items: center; justify-content: space-between;
+            padding: 14px 28px;
+            background: var(--bg1);
+            border-bottom: 1px solid var(--border);
+        }
+        .topbar-brand { display: flex; align-items: center; gap: 10px; }
+        .logo-ring {
+            width: 32px; height: 32px; border-radius: 50%;
+            border: 2px solid var(--accent);
+            display: flex; align-items: center; justify-content: center;
+            position: relative;
+        }
+        .logo-ring::after {
+            content: ''; position: absolute;
+            width: 10px; height: 10px;
+            background: var(--accent); border-radius: 50%;
+        }
+        .brand-name { font-size: 15px; font-weight: 600; letter-spacing: 0.06em; }
+        .brand-sub { font-size: 11px; color: var(--text2); letter-spacing: 0.12em; text-transform: uppercase; }
+        
+        .topbar-status { display: flex; align-items: center; gap: 8px; }
+        .status-dot {
+            width: 8px; height: 8px; border-radius: 50%;
+            background: var(--accent);
+            animation: pulse-ring 2s ease-in-out infinite;
+        }
+        @keyframes pulse-ring { 0%,100%{opacity:1} 50%{opacity:.3} }
+        .status-text { font-size: 12px; color: var(--accent); font-family: 'JetBrains Mono',monospace; letter-spacing:.05em; }
+        
+        .topbar-meta { display: flex; gap: 20px; }
+        .meta-item { text-align: right; }
+        .meta-label { font-size: 10px; color: var(--text3); text-transform: uppercase; letter-spacing:.1em; }
+        .meta-val { font-size: 13px; color: var(--text2); }
+
+        /* HEADER / HERO */
+        .hero {
+            position: relative; overflow: hidden;
+            padding: 32px 28px 24px;
+            background: linear-gradient(180deg, var(--bg1) 0%, var(--bg0) 100%);
+            border-bottom: 1px solid var(--border);
+        }
+        .scan-grid {
+            position: absolute; inset: 0; opacity: .04;
+            background-image: linear-gradient(var(--accent) 1px, transparent 1px), linear-gradient(90deg, var(--accent) 1px, transparent 1px);
+            background-size: 40px 40px;
+        }
+        .hero-inner { position: relative; max-width: 800px; margin: 0 auto; }
+        .hero-label { font-size: 11px; font-weight: 500; letter-spacing:.2em; text-transform: uppercase; color: var(--accent); margin-bottom: 6px; }
+        .hero-title { font-size: 28px; font-weight: 700; margin-bottom: 4px; }
+        .hero-sub { font-size: 14px; color: var(--text2); margin-bottom: 24px; }
+
+        /* VIEWPORT */
+        .scan-viewport {
+            position: relative; border-radius: 12px; overflow: hidden;
+            background: #000; border: 1px solid var(--border);
+            height: 360px; display: flex; align-items: center; justify-content: center;
+        }
+        .live-feed {
+            width: 100%; height: 100%; object-fit: cover;
+            opacity: 0.8;
+        }
+        .scan-overlay { position: absolute; inset: 0; pointer-events: none; }
+        .viewport-corners::before, .viewport-corners::after,
+        .scan-viewport::before, .scan-viewport::after {
+            content: ''; position: absolute; width: 30px; height: 30px; border-color: var(--accent); border-style: solid; z-index: 5;
+        }
+        .scan-viewport::before { top:0; left:0; border-width: 2px 0 0 2px; }
+        .scan-viewport::after  { top:0; right:0; border-width: 2px 2px 0 0; }
+        .viewport-corners::before { bottom:0; left:0; border-width: 0 0 2px 2px; }
+        .viewport-corners::after  { bottom:0; right:0; border-width: 0 2px 2px 0; }
+
+        .scan-line {
+            position: absolute; left: 0; right: 0; height: 2px;
+            background: linear-gradient(90deg, transparent, var(--accent), transparent);
+            z-index: 4; animation: scanAnim 3s ease-in-out infinite;
+        }
+        @keyframes scanAnim { 0% { top: 0%; opacity: 0; } 50% { opacity: 1; } 100% { top: 100%; opacity: 0; } }
+
+        /* FLOAT INFO */
+        .float-info {
+            position: absolute; bottom: 20px; left: 20px; right: 20px;
+            background: rgba(7, 8, 15, 0.8); backdrop-filter: blur(10px);
+            padding: 16px; border-radius: 10px; border: 1px solid var(--border);
+            display: flex; align-items: center; justify-content: space-between;
+            z-index: 10;
+        }
+        .plate-main { font-size: 24px; font-weight: 700; color: var(--accent); letter-spacing: 0.1em; }
+        .conf-label { font-size: 10px; color: var(--text3); text-transform: uppercase; }
+        .conf-val { font-size: 14px; font-weight: 600; color: var(--text2); }
+        .conf-bar-bg { width: 100px; height: 4px; background: var(--bg3); border-radius: 2px; margin-top: 4px; }
+        .conf-bar-fill { height: 100%; background: var(--accent); border-radius: 2px; width: 0%; transition: width 0.5s; }
+
+        /* MAIN CONTENT */
+        .main { max-width: 1100px; margin: 0 auto; padding: 24px; display: grid; grid-template-columns: 1.5fr 1fr; gap: 24px; }
+
+        .card { background: var(--bg1); border: 1px solid var(--border); border-radius: 12px; padding: 20px; }
+        .card-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px; }
+        .card-title { font-size: 13px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.1em; color: var(--text2); }
+        
+        /* STATS */
+        .stats-row { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-bottom: 24px; grid-column: span 2; }
+        .stat-item { background: var(--bg1); border: 1px solid var(--border); padding: 16px; border-radius: 10px; }
+        .stat-val { font-size: 24px; font-weight: 700; color: var(--text1); margin-top: 4px; }
+        .stat-val.accent { color: var(--accent); }
+
+        /* HISTORY */
+        .history-list { display: flex; flex-direction: column; gap: 8px; max-height: 400px; overflow-y: auto; padding-right: 4px; }
+        .history-item {
+            display: flex; align-items: center; gap: 12px; padding: 12px;
+            background: var(--bg2); border: 1px solid var(--border); border-radius: 8px;
+            font-size: 14px;
+        }
+        .hist-status { width: 6px; height: 6px; border-radius: 50%; }
+        .status-ok { background: var(--accent); box-shadow: 0 0 8px var(--accent); }
+        .status-err { background: var(--danger); box-shadow: 0 0 8px var(--danger); }
+        .hist-plate { font-weight: 600; flex: 1; }
+        .hist-time { font-size: 11px; color: var(--text3); }
+
+        /* VIP MANAGEMENT */
+        .vip-input-wrap { display: flex; gap: 8px; margin-bottom: 16px; }
+        input {
+            flex: 1; background: var(--bg2); border: 1px solid var(--border);
+            padding: 10px 14px; color: white; border-radius: 6px; font-family: inherit;
+        }
+        .btn-add {
+            background: var(--accent); color: var(--bg0); border: none;
+            padding: 0 20px; border-radius: 6px; font-weight: 700; cursor: pointer;
+        }
+        .vip-list { display: flex; flex-direction: column; gap: 6px; }
+        .vip-item {
+            display: flex; align-items: center; justify-content: space-between;
+            padding: 8px 12px; background: rgba(255,255,255,0.03); border-radius: 6px;
+        }
+        .btn-del { color: var(--danger); background: none; border: none; cursor: pointer; font-size: 11px; }
+
+        ::-webkit-scrollbar { width: 6px; }
+        ::-webkit-scrollbar-track { background: var(--bg1); }
+        ::-webkit-scrollbar-thumb { background: var(--bg3); border-radius: 3px; }
+
+        @media (max-width: 850px) {
+            .main { grid-template-columns: 1fr; }
+            .stats-row { grid-template-columns: 1fr; grid-column: span 1; }
+        }
+    </style>
+</head>
+<body>
+
+    <div class="topbar">
+        <div class="topbar-brand">
+            <div class="logo-ring"></div>
+            <div>
+                <div class="brand-name">ALPR · NEURAL</div>
+                <div class="brand-sub">Automatic License Plate Recognition</div>
+            </div>
+        </div>
+        <div class="topbar-status">
+            <div class="status-dot"></div>
+            <div class="status-text">SYSTEM ACTIVE</div>
+        </div>
+        <div class="topbar-meta">
+            <div class="meta-item">
+                <div class="meta-label">System Uptime</div>
+                <div class="meta-val mono" id="uptime">00:00:00</div>
+            </div>
+            <div class="meta-item">
+                <div class="meta-label">Hardware</div>
+                <div class="meta-val mono" id="arduino-status">Vérification...</div>
+            </div>
+        </div>
+    </div>
+
+    <div class="hero">
+        <div class="scan-grid"></div>
+        <div class="hero-inner">
+            <div class="hero-label">Automated Detection Module</div>
+            <div class="hero-title">Real-Time Vehicle Analytics</div>
+            <div class="hero-sub">Moteur YOLO actif via DroidCam · Détection de plaques + OCR en temps réel</div>
+
+            <div class="scan-viewport">
+                <img src="/video_feed" class="live-feed">
+                <div class="scan-line"></div>
+                <div class="viewport-corners"></div>
+                
+                <div class="float-info">
+                    <div>
+                        <div class="meta-label">Detection Result</div>
+                        <div class="plate-main mono" id="live-plate">--</div>
+                    </div>
+                    <div style="text-align: right;">
+                        <div class="conf-label">Confidence Score</div>
+                        <div class="conf-val mono" id="live-conf">0%</div>
+                        <div class="conf-bar-bg"><div class="conf-bar-fill" id="conf-fill"></div></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="main">
+        <div class="stats-row">
+            <div class="stat-item">
+                <div class="meta-label">Détections</div>
+                <div class="stat-val accent mono" id="stat-total">0</div>
+            </div>
+            <div class="stat-item">
+                <div class="meta-label">Confiance Moy.</div>
+                <div class="stat-val mono" id="stat-conf">0%</div>
+            </div>
+            <div class="stat-item">
+                <div class="meta-label">Autorisés</div>
+                <div class="stat-val accent mono" id="stat-auth">0</div>
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="card-header">
+                <div class="card-title">Historique des Scans</div>
+            </div>
+            <div class="history-list" id="history-list">
+                <!-- History items here -->
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="card-header">
+                <div class="card-title">Matricules Autorisés</div>
+            </div>
+            <div class="vip-input-wrap">
+                <input type="text" id="vip-input" placeholder="Ajouter un matricule...">
+                <button class="btn-add" onclick="addVip()">AJOUTER</button>
+            </div>
+            <div class="vip-list" id="vip-list">
+                <!-- VIP items here -->
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="card-header">
+                <div class="card-title">Contrôle Matériel (Arduino)</div>
+            </div>
+            <div style="display: flex; gap: 10px; padding: 10px 0;">
+                <button class="btn-add" style="background: var(--bg3); border: 1px solid var(--border); flex: 1;" onclick="testArduino('SCAN')">TEST SCAN (LED 8)</button>
+                <button class="btn-add" style="flex: 1;" onclick="testArduino('AUTHORIZED')">TEST AUTH (LED 12)</button>
+            </div>
+            <div id="hw-log" style="font-size: 11px; color: var(--text3); font-family: 'JetBrains Mono'; margin-top: 5px;">
+                En attente de commande...
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let startTime = Date.now();
+        setInterval(() => {
+            const sec = Math.floor((Date.now() - startTime) / 1000);
+            const h = Math.floor(sec / 3600), m = Math.floor((sec % 3600) / 60), s = sec % 60;
+            const pad = n => String(n).padStart(2, '0');
+            document.getElementById('uptime').textContent = `${pad(h)}:${pad(m)}:${pad(s)}`;
+        }, 1000);
+
+        async function updateData() {
+            try {
+                // Status Update
+                const statusRes = await fetch('/api/status');
+                const status = await statusRes.json();
+                if (status.plate !== "Aucune") {
+                    document.getElementById('live-plate').textContent = status.plate;
+                    document.getElementById('live-conf').textContent = status.confidence + '%';
+                    document.getElementById('conf-fill').style.width = status.confidence + '%';
+                }
+
+                // Stats Update
+                const statsRes = await fetch('/api/stats');
+                const stats = await statsRes.json();
+                document.getElementById('stat-total').textContent = stats.total_scans;
+                document.getElementById('stat-auth').textContent = stats.authorized_scans;
+                document.getElementById('stat-conf').textContent = stats.avg_confidence + '%';
+
+                // Arduino Status
+                const hwRes = await fetch('/api/arduino/status');
+                const hw = await hwRes.json();
+                const hwEl = document.getElementById('arduino-status');
+                if (hw.connected) {
+                    hwEl.textContent = "CONNECTÉ";
+                    hwEl.style.color = "var(--accent)";
+                } else {
+                    hwEl.textContent = "SIMULATION";
+                    hwEl.style.color = "var(--warn)";
+                }
+
+            } catch (e) { console.error(e); }
+        }
+
+        async function testArduino(cmd) {
+            const logEl = document.getElementById('hw-log');
+            logEl.textContent = `Envoi: ${cmd}...`;
+            try {
+                const res = await fetch('/api/arduino/test', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({command: cmd})
+                });
+                const data = await res.json();
+                logEl.textContent = `Réponse: ${data.success ? 'Succès' : 'Échec'}`;
+            } catch (e) {
+                logEl.textContent = "Erreur de connexion";
+            }
+        }
+
+        async function updateList() {
+            try {
+                const res = await fetch('/api/history');
+                const data = await res.json();
+                document.getElementById('history-list').innerHTML = data.map(item => `
+                    <div class="history-item">
+                        <div class="hist-status ${item.status === 'Authorized' ? 'status-ok' : 'status-err'}"></div>
+                        <div class="hist-plate mono">${item.matricule}</div>
+                        <div style="color: var(--text3); font-size: 11px;">${item.confidence}%</div>
+                        <div class="hist-time">${item.timestamp.split(' ')[1]}</div>
+                    </div>
+                `).join('');
+            } catch (e) { console.error(e); }
+        }
+
+        async function updateVips() {
+            const res = await fetch('/api/authorized');
+            const data = await res.json();
+            document.getElementById('vip-list').innerHTML = data.map(vip => `
+                <div class="vip-item">
+                    <span class="mono">${vip}</span>
+                    <button class="btn-del" onclick="removeVip('${vip}')">SUPPRIMER</button>
+                </div>
+            `).join('');
+        }
+
+        async function addVip() {
+            const input = document.getElementById('vip-input');
+            const mat = input.value.trim();
+            if (!mat) return;
+            await fetch('/api/authorized', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({matricule: mat})
+            });
+            input.value = '';
+            updateVips();
+        }
+
+        async function removeVip(mat) {
+            await fetch(`/api/authorized?matricule=${encodeURIComponent(mat)}`, { method: 'DELETE' });
+            updateVips();
+        }
+
+        setInterval(updateData, 1000);
+        setInterval(updateList, 3000);
+        updateData();
+        updateList();
+        updateVips();
+    </script>
+</body>
+</html>
